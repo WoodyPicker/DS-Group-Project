@@ -28,7 +28,9 @@ interface LibraryADT {
 
     void viewLatestHistory();
 
-    void viewBorrowedBooks(); // NEW FEATURE
+    void viewBorrowedBooks();
+
+    void deleteBook();
 
     void printWholeCatalogue();
 }
@@ -94,6 +96,9 @@ class Book {
     }
 
     public void removeCopies(int count) {
+        if (count < 0 || count > this.availableCopies) {
+            throw new IllegalArgumentException("Cannot remove more copies than available.");
+        }
         this.totalCopies -= count;
         this.availableCopies -= count;
     }
@@ -293,6 +298,9 @@ class SmartLibrary implements LibraryADT {
 
     private String userRole = "";
 
+    // Tracks ISBNs borrowed in this session to validate returns
+    private List<Integer> sessionBorrowedIsbns = new ArrayList<>();
+
     private final String CATALOGUE_FILE = "catalogue.csv";
     private final String HISTORY_FILE = "history.csv";
 
@@ -388,10 +396,15 @@ class SmartLibrary implements LibraryADT {
         }
     }
 
+    @Override
     public void deleteBook() {
         try {
             System.out.print("Enter ISBN to delete: ");
             int isbn = Integer.parseInt(sc.nextLine().trim());
+            if (isbn <= 0) {
+                System.out.println("Error: ISBN must be a positive number.");
+                return;
+            }
             Book b = catalogue.search(isbn);
 
             if (b == null) {
@@ -483,26 +496,40 @@ class SmartLibrary implements LibraryADT {
 
     @Override
     public void borrowBook(int isbn) {
+        if (isbn <= 0) {
+            System.out.println("Error: ISBN must be a positive number.");
+            return;
+        }
         Book b = catalogue.search(isbn);
         if (b != null) {
             if (b.getAvailableCopies() > 0) {
                 b.borrowCopy();
+                sessionBorrowedIsbns.add(isbn);
                 history.push(b, "Borrowed");
                 System.out.println("Success: You borrowed '" + b.getTitle() + "'. " + b.getAvailableCopies() + " copies remaining.");
             } else {
                 System.out.println("Error: '" + b.getTitle() + "' is currently out of stock.");
             }
         } else {
-            System.out.println("Error: Book with ISBN " + isbn + " does not exist.");
+            System.out.println("Error: Book with ISBN " + isbn + " does not exist in the catalogue.");
         }
     }
 
     @Override
     public void returnBook(int isbn) {
+        if (isbn <= 0) {
+            System.out.println("Error: ISBN must be a positive number.");
+            return;
+        }
+        if (!sessionBorrowedIsbns.contains(isbn)) {
+            System.out.println("Error: You have not borrowed a book with ISBN " + isbn + " in this session.");
+            return;
+        }
         Book b = catalogue.search(isbn);
         if (b != null) {
             if (b.getAvailableCopies() < b.getTotalCopies()) {
                 b.returnCopy();
+                sessionBorrowedIsbns.remove(Integer.valueOf(isbn));
                 history.push(b, "Returned");
                 System.out.println("Success: You returned '" + b.getTitle() + "'. " + b.getAvailableCopies() + " copies now available.");
             } else {
@@ -627,20 +654,31 @@ class SmartLibrary implements LibraryADT {
                 try {
                     System.out.print("Enter ISBN (Numbers only): ");
                     int isbn = Integer.parseInt(sc.nextLine().trim());
+                    if (isbn <= 0) {
+                        System.out.println("Error: ISBN must be a positive number.");
+                        break;
+                    }
                     System.out.print("Enter Title: ");
                     String title = sc.nextLine().replace(",", " ").trim();
+                    if (title.isEmpty()) {
+                        System.out.println("Error: Title cannot be empty.");
+                        break;
+                    }
                     System.out.print("Enter Author: ");
                     String author = sc.nextLine().replace(",", " ").trim();
+                    if (author.isEmpty()) {
+                        System.out.println("Error: Author cannot be empty.");
+                        break;
+                    }
                     System.out.print("Enter Initial Number of Copies: ");
                     int copies = Integer.parseInt(sc.nextLine().trim());
-
-                    if (title.isEmpty() || author.isEmpty() || copies < 1) {
-                        System.out.println("Error: Invalid details provided.");
+                    if (copies < 1) {
+                        System.out.println("Error: Number of copies must be at least 1.");
                         break;
                     }
                     addBook(isbn, title, author, copies);
                 } catch (NumberFormatException e) {
-                    System.out.println("Error: ISBN and Copies must be numbers.");
+                    System.out.println("Error: ISBN and number of copies must be valid integers.");
                 }
                 break;
 
@@ -648,16 +686,19 @@ class SmartLibrary implements LibraryADT {
                 try {
                     System.out.print("Enter ISBN to restock: ");
                     int isbn = Integer.parseInt(sc.nextLine().trim());
+                    if (isbn <= 0) {
+                        System.out.println("Error: ISBN must be a positive number.");
+                        break;
+                    }
                     System.out.print("Enter number of additional copies: ");
                     int copies = Integer.parseInt(sc.nextLine().trim());
-
-                    if (copies > 0) {
-                        addCopiesToBook(isbn, copies);
-                    } else {
+                    if (copies < 1) {
                         System.out.println("Error: Number of copies must be greater than 0.");
+                        break;
                     }
+                    addCopiesToBook(isbn, copies);
                 } catch (NumberFormatException e) {
-                    System.out.println("Error: Valid numbers required.");
+                    System.out.println("Error: ISBN and number of copies must be valid integers.");
                 }
                 break;
 
@@ -679,10 +720,20 @@ class SmartLibrary implements LibraryADT {
                     }
                 } else if (searchType.equals("2")) {
                     System.out.print("Enter Title: ");
-                    searchBookByTitle(sc.nextLine().trim());
+                    String titleQuery = sc.nextLine().trim();
+                    if (titleQuery.isEmpty()) {
+                        System.out.println("Error: Title cannot be empty.");
+                    } else {
+                        searchBookByTitle(titleQuery);
+                    }
                 } else if (searchType.equals("3")) {
                     System.out.print("Enter Author: ");
-                    searchBookByAuthor(sc.nextLine().trim());
+                    String authorQuery = sc.nextLine().trim();
+                    if (authorQuery.isEmpty()) {
+                        System.out.println("Error: Author name cannot be empty.");
+                    } else {
+                        searchBookByAuthor(authorQuery);
+                    }
                 } else {
                     System.out.println("Invalid search type.");
                 }
