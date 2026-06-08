@@ -1,3 +1,16 @@
+/**
+ * COURSE      : WIA1002 Data Structures
+ * GROUP       : Group 1 OCC 9
+ * PROJECT     : Smart Library Management System
+ * COMPONENT   : SmartLibrary.java
+ * AUTHOR      : Irwina Batrisha binti Mohd Shahar(25061717) & Ali Naif Ahmed Jiawi (25071095)
+ * DESCRIPTION : Serves as the concrete system controller implementing the LibraryADT 
+ * interface contract. Manages user authentication contexts (Librarian 
+ * vs. Student), coordinates inverted index HashMaps for constant-time 
+ * text searches, routes primary key insertions safely into the BookBST 
+ * engine, logs operational transactions onto the HistoryStack, and 
+ * drives flat-file CSV synchronization mechanisms.
+ */
 package Classes;
 
 import java.io.File;
@@ -10,68 +23,106 @@ import java.util.List;
 import java.util.Scanner;
 
 public class SmartLibrary implements LibraryADT {
-
+    
+    // Keep internal implementation details hidden from client code.
     private BookBST catalogue = new BookBST();
     private HistoryStack history = new HistoryStack();
     private Scanner sc = new Scanner(System.in);
-    private HashMap<String, Book> titleIndex = new HashMap<>();
+    // Inverted indexes mapping lookup targets to Lists to cleanly manage hash collision buckets.
+    private HashMap<String, List<Book>> titleIndex = new HashMap<>();
     private HashMap<String, List<Book>> authorIndex = new HashMap<>();
+    // Variables used to track the current user and system state.
     private String userRole = "";
     private List<Integer> sessionBorrowedIsbns = new ArrayList<>();
-
+    // File paths used to store and load application data.
     private final String CATALOGUE_FILE = "Database/catalogue.csv";
     private final String HISTORY_FILE = "Database/history.csv";
-
+    
+    /**
+     * Constructor triggers automated file initialization routines upon class instantiation.
+     */
     public SmartLibrary() {
         loadData();
     }
-
+    /**
+    * Loads data from CSV files and reconstructs the application's
+    * in-memory collections.
+    */
     private void loadData() {
-        try {
-            File catFile = new File(CATALOGUE_FILE);
-            if (catFile.exists()) {
-                Scanner reader = new Scanner(catFile);
-                while (reader.hasNextLine()) {
-                    String[] data = reader.nextLine().split(",");
-                    if (data.length == 5) {
-                        Book b = new Book(Integer.parseInt(data[0]), data[1], data[2],
-                                Integer.parseInt(data[3]), Integer.parseInt(data[4]));
-                        catalogue.insert(b);
-                        titleIndex.put(b.getTitle().toLowerCase(), b);
-                        authorIndex.putIfAbsent(b.getAuthor().toLowerCase(), new ArrayList<>());
-                        authorIndex.get(b.getAuthor().toLowerCase()).add(b);
-                    }
-                }
-                reader.close();
-            }
-
-            File histFile = new File(HISTORY_FILE);
-            if (histFile.exists()) {
-                Scanner reader = new Scanner(histFile);
-                while (reader.hasNextLine()) {
-                    String[] data = reader.nextLine().split(",");
-                    if (data.length == 2) {
-                        Book b = catalogue.search(Integer.parseInt(data[0]));
-                        if (b != null) {
-                            history.push(b, data[1]);
-                        }
-                    }
-                }
-                reader.close();
-            }
-            System.out.println("System Initialized: Data loaded successfully.");
-        } catch (FileNotFoundException e) {
-            System.out.println("System Initialized: No previous save data found. Starting fresh.");
-        } catch (Exception e) {
-            System.out.println("Warning: Could not perfectly load all save data.");
+    try {
+        File databaseDir = new File("Database");
+        if (!databaseDir.exists()) {
+            databaseDir.mkdirs(); // Create the required directories if they do not already exist.
         }
-    }
 
+        File catFile = new File(CATALOGUE_FILE);
+        if (catFile.exists()) {
+            Scanner reader = new Scanner(catFile);
+            while (reader.hasNextLine()) {
+                String line = reader.nextLine().trim();
+                if (line.isEmpty()) continue; // Skip redundant blank line segments safely
+                String[] data = line.split(",");
+                if (data.length == 5) {
+                    int isbn = Integer.parseInt(data[0].trim());
+                    String title = data[1].trim();
+                    String author = data[2].trim();
+                    int totalCopies = Integer.parseInt(data[3].trim());
+                    int availableCopies = Integer.parseInt(data[4].trim());
+
+                    // Load the saved values and rebuild the object's state.
+                    Book b = new Book(isbn, title, author, totalCopies, availableCopies);
+                    catalogue.insert(b);
+                    // Store text keys in a case-insensitive format for consistent lookups.
+                    titleIndex.putIfAbsent(b.getTitle().toLowerCase(), new ArrayList<>());
+                    titleIndex.get(b.getTitle().toLowerCase()).add(b);
+
+                    authorIndex.putIfAbsent(b.getAuthor().toLowerCase(), new ArrayList<>());
+                    authorIndex.get(b.getAuthor().toLowerCase()).add(b);
+                }
+            }
+            reader.close();
+        }
+
+        File histFile = new File(HISTORY_FILE);
+        if (histFile.exists()) {
+            Scanner reader = new Scanner(histFile);
+            while (reader.hasNextLine()) {
+                String line = reader.nextLine().trim();
+                if (line.isEmpty()) continue;
+                String[] data = line.split(",");
+                if (data.length == 2) {
+                    int isbn = Integer.parseInt(data[0].trim());
+                    String status = data[1].trim();
+                    
+                    // Link the stored records back to their corresponding data objects.
+                    Book b = catalogue.search(isbn);
+                    if (b != null) {
+                        history.push(b, status);
+                    }
+                }
+            }
+            reader.close();
+        }
+        System.out.println("System Initialised: Data loaded successfully.");
+    } catch (FileNotFoundException e) {
+        System.out.println("System Initialised: No previous save data found. Starting fresh.");
+    } catch (Exception e) {
+        System.out.println("Warning: Could not perfectly load all save data.");
+    }
+}
+    /**
+    * Saves application data to disk and verifies that the operation completes successfully.
+    */
     private void saveData() {
         try {
+            File databaseDir = new File("Database");
+            if (!databaseDir.exists()) {
+                databaseDir.mkdirs();
+            }
+
             PrintWriter catWriter = new PrintWriter(CATALOGUE_FILE);
             for (Book b : catalogue.getAllBooks()) {
-                catWriter.println(b.toCSV());
+                catWriter.println(b.toCSV()); // Writes using safe internal sanitizer loops
             }
             catWriter.close();
 
@@ -86,7 +137,10 @@ public class SmartLibrary implements LibraryADT {
             System.out.println("Error: Could not save data to files.");
         }
     }
-
+    /**
+     * Registers a unique book entity. Prevents primary duplicate index overlaps.
+     * Complexity: O(log N) Average tree traversal route check.
+     */
     @Override
     public void addBook(int isbn, String title, String author, int copies) {
         if (catalogue.search(isbn) != null) {
@@ -96,13 +150,17 @@ public class SmartLibrary implements LibraryADT {
 
         Book newBook = new Book(isbn, title, author, copies);
         catalogue.insert(newBook);
-        titleIndex.put(title.toLowerCase(), newBook);
+        // Add the new item to the author and title lookup maps.
+        titleIndex.putIfAbsent(title.toLowerCase(), new ArrayList<>());
+        titleIndex.get(title.toLowerCase()).add(newBook);
         authorIndex.putIfAbsent(author.toLowerCase(), new ArrayList<>());
         authorIndex.get(author.toLowerCase()).add(newBook);
 
         System.out.println("Success: '" + title + "' added to the catalogue with " + copies + " copies.");
     }
-
+    /**
+    * Finds the target item using a binary search before updating its data.
+    */
     @Override
     public void addCopiesToBook(int isbn, int copies) {
         Book b = catalogue.search(isbn);
@@ -113,7 +171,9 @@ public class SmartLibrary implements LibraryADT {
             System.out.println("Error: Book with ISBN " + isbn + " not found.");
         }
     }
-
+    /**
+    * Provides a menu for removing specific properties from an item.
+    */
     @Override
     public void deleteBook() {
         try {
@@ -135,23 +195,34 @@ public class SmartLibrary implements LibraryADT {
             System.out.println(" - Enter a [number] to delete that many available copies.");
             System.out.println(" - Type 'all' to delete ALL available copies.");
             System.out.println(" - Type 'purge' to completely remove the book from the system.");
-            System.out.println(" - Type 'exit' to cancel and return to the menu."); // <-- NEW OPTION
+            System.out.println(" - Type 'exit' to cancel and return to the menu.");
             System.out.print("Choice: ");
 
             String choice = sc.nextLine().trim().toLowerCase();
 
-            // Check for exit first
             if (choice.equals("exit") || choice.equals("cancel")) {
                 System.out.println("Deletion cancelled. Returning to menu.");
                 return;
-            } else if (choice.equals("purge")) {
+            } else if (choice.equals("purge")) { 
+                // Ensure the tree remains valid before deleting the node.
                 if (b.getAvailableCopies() < b.getTotalCopies()) {
                     System.out.println("Error: Cannot purge book. " + (b.getTotalCopies() - b.getAvailableCopies()) + " copies are currently borrowed.");
                 } else {
-                    catalogue.delete(isbn);
-                    titleIndex.remove(b.getTitle().toLowerCase());
-                    if (authorIndex.containsKey(b.getAuthor().toLowerCase())) {
-                        authorIndex.get(b.getAuthor().toLowerCase()).remove(b);
+                    catalogue.delete(isbn); // Drop record nodes out from core search paths.
+
+                    // Remove all references to the item from the indexing structures.
+                    String titleKey = b.getTitle().toLowerCase();
+                    if (titleIndex.containsKey(titleKey)) {
+                    titleIndex.get(titleKey).remove(b);
+                    if (titleIndex.get(titleKey).isEmpty()) {
+                     titleIndex.remove(titleKey);}
+                    }
+                    String authorKey = b.getAuthor().toLowerCase();
+                    if (authorIndex.containsKey(authorKey)) {
+                        authorIndex.get(authorKey).remove(b);
+                        if (authorIndex.get(authorKey).isEmpty()) {
+                            authorIndex.remove(authorKey);
+                        }
                     }
                     System.out.println("Success: All records of '" + b.getTitle() + "' have been deleted.");
                 }
@@ -164,21 +235,29 @@ public class SmartLibrary implements LibraryADT {
                     System.out.println("Success: Removed " + removed + " copies. " + b.getTotalCopies() + " total copies remain.");
                 }
             } else {
-                int amount = Integer.parseInt(choice);
-                if (amount <= 0) {
-                    System.out.println("Error: Amount must be greater than 0.");
-                } else if (amount > b.getAvailableCopies()) {
-                    System.out.println("Error: Cannot delete " + amount + " copies. Only " + b.getAvailableCopies() + " are available.");
+                // Checks whether the input contains only digits.
+                if (choice.matches("\\d+")) {
+                    int amount = Integer.parseInt(choice);
+                    if (amount <= 0) {
+                        System.out.println("Error: Amount must be greater than 0.");
+                    } else if (amount > b.getAvailableCopies()) {
+                        System.out.println("Error: Cannot delete " + amount + " copies. Only " + b.getAvailableCopies() + " are available.");
+                    } else {
+                        b.removeCopies(amount);
+                        System.out.println("Success: Removed " + amount + " copies. " + b.getAvailableCopies() + " available copies remain.");
+                    }
                 } else {
-                    b.removeCopies(amount);
-                    System.out.println("Success: Removed " + amount + " copies. " + b.getAvailableCopies() + " available copies remain.");
+                    System.out.println("Error: Invalid option selection. Expected a number, 'all', 'purge', or 'exit'.");
                 }
             }
         } catch (NumberFormatException e) {
-            System.out.println("Error: Invalid input. Expected a number, 'all', 'purge', or 'exit'.");
+            System.out.println("Error: Invalid input. Expected a valid integer for ISBN.");
         }
     }
-
+    /**
+    * Performs efficient primary-key lookups using a binary search tree.
+    * Average time complexity: O(log N) due to logarithmic tree traversal.
+    */
     @Override
     public void searchBookByIsbn(int isbn) {
         Book b = catalogue.search(isbn);
@@ -189,19 +268,31 @@ public class SmartLibrary implements LibraryADT {
         }
     }
 
+   // Iterates through text entries and checks for substring matches.
     @Override
     public void searchBookByTitle(String title) {
-        Book b = titleIndex.get(title.toLowerCase());
-        if (b != null) {
-            System.out.println("Found: " + b.toString());
-        } else {
-            System.out.println("Result: No book found with title '" + title + "'.");
+    String lowerQuery = title.toLowerCase();
+    boolean found = false;
+    for (String storedTitle : titleIndex.keySet()) {
+        if (storedTitle.contains(lowerQuery)) {
+            for (Book b : titleIndex.get(storedTitle)) {
+                System.out.println("Found: " + b.toString());
+                found = true;
+            }
         }
     }
-
+    if (!found) {
+        System.out.println("Result: No book found containing the title '" + title + "'.");
+    }
+}
+    /**
+    * Performs fast lookups using hash-based key mapping.
+    * Average time complexity is near O(1), avoiding linear scans.
+    */   
     @Override
     public void searchBookByAuthor(String author) {
         List<Book> books = authorIndex.get(author.toLowerCase());
+        // Prevents errors when the query is null.
         if (books != null && !books.isEmpty()) {
             System.out.println("Found books by " + author + ":");
             for (Book b : books) {
@@ -211,7 +302,9 @@ public class SmartLibrary implements LibraryADT {
             System.out.println("Result: No books found by author '" + author + "'.");
         }
     }
-
+    /**
+    * Decrements available units and logs a tracking flag instance onto the HistoryStack.
+    */
     @Override
     public void borrowBook(int isbn) {
         if (isbn <= 0) {
@@ -222,8 +315,8 @@ public class SmartLibrary implements LibraryADT {
         if (b != null) {
             if (b.getAvailableCopies() > 0) {
                 b.borrowCopy();
-                sessionBorrowedIsbns.add(isbn);
-                history.push(b, "Borrowed");
+                sessionBorrowedIsbns.add(isbn); // Append tracking token onto active list profile
+                history.push(b, "Borrowed"); // Push onto chronological log stack
                 System.out.println("Success: You borrowed '" + b.getTitle() + "'. " + b.getAvailableCopies() + " copies remaining.");
             } else {
                 System.out.println("Error: '" + b.getTitle() + "' is currently out of stock.");
@@ -232,40 +325,42 @@ public class SmartLibrary implements LibraryADT {
             System.out.println("Error: Book with ISBN " + isbn + " does not exist in the catalogue.");
         }
     }
-
+    /**
+    * Restores shelf capacities and registers operation status maps.
+    */
     @Override
     public void returnBook(int isbn) {
-        if (isbn <= 0) {
-            System.out.println("Error: ISBN must be a positive number.");
-            return;
-        }
-        if (!sessionBorrowedIsbns.contains(isbn)) {
-            System.out.println("Error: You have not borrowed a book with ISBN " + isbn + " in this session.");
-            return;
-        }
-        Book b = catalogue.search(isbn);
-        if (b != null) {
-            if (b.getAvailableCopies() < b.getTotalCopies()) {
-                b.returnCopy();
-                sessionBorrowedIsbns.remove(Integer.valueOf(isbn));
-                history.push(b, "Returned");
-                System.out.println("Success: You returned '" + b.getTitle() + "'. " + b.getAvailableCopies() + " copies now available.");
-            } else {
-                System.out.println("Error: All known copies of '" + b.getTitle() + "' are already in the library.");
-            }
-        } else {
-            System.out.println("Error: This library does not own a book with ISBN " + isbn + ".");
-        }
+    if (isbn <= 0) {
+        System.out.println("Error: ISBN must be a positive number.");
+        return;
     }
-
+    Book b = catalogue.search(isbn);
+    if (b == null) {
+        System.out.println("Error: This library does not own a book with ISBN " + isbn + ".");
+        return;
+    }
+    if (b.getAvailableCopies() < b.getTotalCopies()) {
+        b.returnCopy();
+        sessionBorrowedIsbns.remove(Integer.valueOf(isbn)); // Clear session loan parameters safely.
+        history.push(b, "Returned");
+        System.out.println("Success: You returned '" + b.getTitle() + "'. " + b.getAvailableCopies() + " copies now available.");
+    } else {
+        System.out.println("Notice: All copies of '" + b.getTitle() + "' are already in the library.");
+    }
+}
+    /**
+    * Direct call mapping out to the HistoryStack controller interface method.
+    */
     @Override
     public void viewLatestHistory() {
         history.show();
     }
-
+    /**
+    * Filters repository data to find items that are currently on loan.
+    */
     @Override
     public void viewBorrowedBooks() {
-        System.out.println("\n--- Currently Borrowed Books ---");
+        System.out.println("\n<<--- Currently Borrowed Books --->>");
         List<Book> allBooks = catalogue.getAllBooks();
         boolean found = false;
 
@@ -281,29 +376,39 @@ public class SmartLibrary implements LibraryADT {
         if (!found) {
             System.out.println("All books are currently in the library.");
         }
-        System.out.println("--------------------------------");
+        System.out.println("<<-------------------------------->>");
     }
-
+    /**
+    * Performs an in-order traversal to output the tree in sorted order.
+    */
     @Override
     public void printWholeCatalogue() {
         catalogue.printInOrder();
     }
-
+    /**
+    * Initializes the interactive control loop for the terminal interface.
+    */
+    @Override
     public void runMenu() {
         System.out.println("\nWelcome to the Smart Library System");
 
         while (true) {
             System.out.println("\n--- Login ---");
-            System.out.println("Are you logging in as a [1] Student, [2] Librarian, or [3] Shut Down?");
+            System.out.println("Are you logging in as a Student, Librarian, or Shut Down?");
+            System.out.println("  1. Student");
+            System.out.println("  2. Librarian");
+            System.out.println("  3. Shut Down");
 
             while (true) {
                 System.out.print("Choice: ");
                 String roleChoice = sc.nextLine().trim();
                 if (roleChoice.equals("1")) {
                     userRole = "Student";
+                    sessionBorrowedIsbns.clear(); // Clear session state upon new login context
                     break;
                 } else if (roleChoice.equals("2")) {
                     userRole = "Librarian";
+                    sessionBorrowedIsbns.clear(); // Clear session state upon new login context
                     break;
                 } else if (roleChoice.equals("3")) {
                     System.out.println("Saving and shutting down. Goodbye!");
@@ -319,16 +424,11 @@ public class SmartLibrary implements LibraryADT {
             while (loggedIn) {
                 printMenu();
                 System.out.print("Enter Command: ");
-                String command = sc.nextLine().trim().toLowerCase(); // Normalize input
-
-                // Admin security checkpoint using semantic words
-                if (userRole.equals("Student") && (command.equals("add") || command.equals("restock") || command.equals("delete"))) {
-                    System.out.println("Permission Denied: Only Librarians can manage library inventory.");
-                    continue;
-                }
+                String command = sc.nextLine().trim().toLowerCase();
 
                 if (command.equals("logout") || command.equals("10")) {
                     System.out.println("Logging out...");
+                    sessionBorrowedIsbns.clear(); // Safely clear tracking state on explicit logout
                     loggedIn = false;
                     break;
                 }
@@ -339,37 +439,45 @@ public class SmartLibrary implements LibraryADT {
                     return;
                 }
 
-                handleChoice(command);
+                handleChoice(command); // Pass raw command strings safely out to route handlers.
             }
         }
     }
-
+    /**
+    * Formats and displays available options based on user role.
+    */
     private void printMenu() {
-        System.out.println("\n===== SmartLibrary CLI Navigation (" + userRole + ") =====");
+        System.out.println("\n<<----- SmartLibrary CLI Navigation (" + userRole + ") ----->>");
         System.out.println("Type one of the following command keywords to execute an action:\n");
 
         if (userRole.equals("Librarian")) {
-            System.out.printf("  %-12s -> %s\n", "[1] add", "Register a completely new book title");
-            System.out.printf("  %-12s -> %s\n", "[2] restock", "Add physical copies to an existing book");
-            System.out.printf("  %-12s -> %s\n", "[3] delete", "Remove copies or purge a book entirely");
+            System.out.printf("  %-12s -> %s\n", " add", "Register a completely new book title");
+            System.out.printf("  %-12s -> %s\n", " restock", "Add physical copies to an existing book");
+            System.out.printf("  %-12s -> %s\n", " delete", "Remove copies or purge a book entirely");
         } else {
             System.out.println("  [Inventory Management Commands Locked for Students]");
         }
 
-        System.out.printf("  %-12s -> %s\n", "[4] search", "Find a book via ISBN, Title, or Author");
-        System.out.printf("  %-12s -> %s\n", "[5] borrow", "Checkout a book copy");
-        System.out.printf("  %-12s -> %s\n", "[6] return", "Check-in a borrowed book copy");
-        System.out.printf("  %-12s -> %s\n", "[7] history", "View the chronological library audit log");
-        System.out.printf("  %-12s -> %s\n", "[8] borrowed", "List all books currently missing copies");
-        System.out.printf("  %-12s -> %s\n", "[9] catalog", "Print the complete library collection sorted by ISBN");
-        System.out.printf("  %-12s -> %s\n", "[10] logout", "Log out of current profile back to main login panel");
-        System.out.printf("  %-12s -> %s\n", "[11] exit", "Save database metrics and safely kill the application process");
-        System.out.println("=================================================================");
+        System.out.printf("  %-12s -> %s\n", " search", "Find a book via ISBN, Title, or Author");
+        System.out.printf("  %-12s -> %s\n", " borrow", "Checkout a book copy");
+        System.out.printf("  %-12s -> %s\n", " return", "Check-in a borrowed book copy");
+        System.out.printf("  %-12s -> %s\n", " history", "View the chronological library audit log");
+        System.out.printf("  %-12s -> %s\n", " borrowed", "List all books currently missing copies");
+        System.out.printf("  %-12s -> %s\n", " catalog", "Print the complete library collection sorted by ISBN");
+        System.out.printf("  %-12s -> %s\n", " logout", "Log out of current profile back to main login panel");
+        System.out.printf("  %-12s -> %s\n", " exit", "Save database metrics and safely kill the application process");
+        System.out.println("<<----------------------------------------------------------------->>");
     }
-
+    /**
+    * Evaluates route flags mapping string inputs safely out to structural method calls.
+    */
     private void handleChoice(String command) {
         switch (command) {
             case "add", "1":
+                if (!userRole.equals("Librarian")) {
+                    System.out.println("Permission Denied: Only Librarians can manage library inventory.");
+                    break;
+                }
                 try {
                     System.out.print("Enter ISBN (Numbers only): ");
                     int isbn = Integer.parseInt(sc.nextLine().trim());
@@ -378,6 +486,7 @@ public class SmartLibrary implements LibraryADT {
                         break;
                     }
                     System.out.print("Enter Title: ");
+                    // Removes commas to prevent issues when writing database rows.
                     String title = sc.nextLine().replace(",", " ").trim();
                     if (title.isEmpty()) {
                         System.out.println("Error: Title cannot be empty.");
@@ -402,6 +511,10 @@ public class SmartLibrary implements LibraryADT {
                 break;
 
             case "restock", "2":
+                if (!userRole.equals("Librarian")) {
+                    System.out.println("Permission Denied: Only Librarians can manage library inventory.");
+                    break;
+                }
                 try {
                     System.out.print("Enter ISBN to restock: ");
                     int isbn = Integer.parseInt(sc.nextLine().trim());
@@ -422,22 +535,26 @@ public class SmartLibrary implements LibraryADT {
                 break;
 
             case "delete", "3":
+                if (!userRole.equals("Librarian")) {
+                    System.out.println("Permission Denied: Only Librarians can manage library inventory.");
+                    break;
+                }
                 deleteBook();
                 break;
 
             case "search", "4":
-                System.out.println("Search options: [1] ISBN [2] Title [3] Author");
+                System.out.println("Search options: 1. ISBN | 2. Title | 3. Author");
                 System.out.print("Choice: ");
                 String searchType = sc.nextLine().trim();
 
-                if (searchType.equals("1")) {
+                if (searchType.equals("1") || searchType.equalsIgnoreCase("isbn")) {
                     try {
                         System.out.print("Enter ISBN: ");
                         searchBookByIsbn(Integer.parseInt(sc.nextLine().trim()));
                     } catch (NumberFormatException e) {
                         System.out.println("Error: ISBN must be a valid integer.");
                     }
-                } else if (searchType.equals("2")) {
+                } else if (searchType.equals("2") || searchType.equalsIgnoreCase("title")) {
                     System.out.print("Enter Title: ");
                     String titleQuery = sc.nextLine().trim();
                     if (titleQuery.isEmpty()) {
@@ -445,7 +562,7 @@ public class SmartLibrary implements LibraryADT {
                     } else {
                         searchBookByTitle(titleQuery);
                     }
-                } else if (searchType.equals("3")) {
+                } else if (searchType.equals("3") || searchType.equalsIgnoreCase("author")) {
                     System.out.print("Enter Author: ");
                     String authorQuery = sc.nextLine().trim();
                     if (authorQuery.isEmpty()) {
