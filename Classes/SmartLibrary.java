@@ -3,7 +3,7 @@
  * GROUP       : Group 1 OCC 9
  * PROJECT     : Smart Library Management System
  * COMPONENT   : SmartLibrary.java
- * AUTHOR      : Irwina Batrisha binti Mohd Shahar(25061717) & Ali Naif Ahmed Jiawi (25071095)
+ * AUTHOR      : Yughendraa Karmukilan (25060111) & Irwina Batrisha binti Mohd Shahar(25061717)
  * DESCRIPTION : Serves as the concrete system controller implementing the LibraryADT 
  * interface contract. Manages user authentication contexts (Librarian 
  * vs. Student), coordinates inverted index HashMaps for constant-time 
@@ -410,13 +410,6 @@ public class SmartLibrary implements LibraryADT {
     public void printWholeCatalogue() {
         catalogue.printInOrder();
     }
-
-    // =====================================================
-    // THE 3 METHODS BELOW WERE CHANGED:
-    // runMenu()     — number-based login, no string commands
-    // printMenu()   — simple println, separate menus per role
-    // handleChoice()— takes int, two switch blocks per role
-    // =====================================================
 
     /**
      * Initializes the interactive control loop for the terminal interface.
