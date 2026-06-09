@@ -468,19 +468,20 @@ public class SmartLibrary implements LibraryADT {
                     continue; // restart inner loop to show menu again
                 }
 
+                // Save and Exit — Student = 7, Librarian = 10
                 if ((userRole.equals("Student") && choice == 7)
-                        || (userRole.equals("Librarian") && choice == 11)) {
+                        || (userRole.equals("Librarian") && choice == 10)) {
                     System.out.println("Saving and shutting down. Goodbye!");
-                    saveData();        // write all books and history to CSV files before exiting
-                    return;            // exit runMenu() entirely, ends the program
+                    saveData();  // write all books and history to CSV files before exiting
+                    return;      // exit runMenu() entirely, ends the program
 
-
+                    // Logout — returns to login screen. Student = 8, Librarian = 11
                 } else if (userRole.equals("Student") && choice == 8) {
                     System.out.println("Logging out...");
                     sessionBorrowedIsbns.clear(); // clear borrow tracking on logout
                     loggedIn = false;             // exit inner loop, go back to login screen
 
-                } else if (userRole.equals("Librarian") && choice == 12) {
+                } else if (userRole.equals("Librarian") && choice == 11) {
                     System.out.println("Logging out...");
                     sessionBorrowedIsbns.clear(); // clear borrow tracking on logout
                     loggedIn = false;             // exit inner loop, go back to login screen
@@ -510,18 +511,17 @@ public class SmartLibrary implements LibraryADT {
 
         } else if (userRole.equals("Librarian")) {
             System.out.println("\n<<----- Smart Library - Librarian Menu ----->>");
-            System.out.println("1. Add Book");              // Librarian only — adds a new book
-            System.out.println("2. Restock Book");          // Librarian only — adds more copies
-            System.out.println("3. Delete Book");           // Librarian only — removes copies or purges
+            System.out.println("1. Add Book");             // Librarian only — adds a new book
+            System.out.println("2. Restock Book");         // Librarian only — adds more copies
+            System.out.println("3. Delete Book");          // Librarian only — removes copies or purges
             System.out.println("4. Search Book");
             System.out.println("5. Borrow Book");
             System.out.println("6. Return Book");
             System.out.println("7. View History");
             System.out.println("8. View Borrowed Books");
             System.out.println("9. View Full Catalogue");
-            System.out.println("10. Print Whole Catalogue");
-            System.out.println("11. Save and Exit");
-            System.out.println("12. Logout");
+            System.out.println("10. Save and Exit");
+            System.out.println("11. Logout");
             System.out.println("<<------------------------------------------>>");
         }
     }
@@ -584,12 +584,9 @@ public class SmartLibrary implements LibraryADT {
                 case 9:
                     printWholeCatalogue(); // print all books sorted by ISBN (BST in-order traversal)
                     break;
-                case 10:
-                    printWholeCatalogue(); // print all books sorted by ISBN (BST in-order traversal)
-                    break;
 
                 default:
-                    System.out.println("Error: Please enter a number between 1 and 12.");
+                    System.out.println("Error: Please enter a number between 1 and 11.");
             }
         }
     }
@@ -700,9 +697,8 @@ public class SmartLibrary implements LibraryADT {
     }
 
     /**
-     *handleBorrow() — reads ISBN input then calls borrowBook()
+     * handleBorrow() — reads ISBN input then calls borrowBook()
      */
-
     private void handleBorrow() {
         try {
             System.out.print("Enter ISBN to borrow: ");
@@ -713,7 +709,7 @@ public class SmartLibrary implements LibraryADT {
     }
 
     /**
-     *handleReturn() — reads ISBN input then calls returnBook()
+     * handleReturn() — reads ISBN input then calls returnBook()
      */
     private void handleReturn() {
         try {
