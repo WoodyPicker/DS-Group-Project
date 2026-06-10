@@ -3,12 +3,12 @@
  * GROUP       : Group 1 OCC 9
  * PROJECT     : Smart Library Management System
  * COMPONENT   : SmartLibrary.java
- * AUTHOR      : Irwina Batrisha binti Mohd Shahar(25061717) & Ali Naif Ahmed Jiawi (25071095)
- * DESCRIPTION : Serves as the concrete system controller implementing the LibraryADT 
- * interface contract. Manages user authentication contexts (Librarian 
- * vs. Student), coordinates inverted index HashMaps for constant-time 
- * text searches, routes primary key insertions safely into the BookBST 
- * engine, logs operational transactions onto the HistoryStack, and 
+ * AUTHOR      : Yughendraa Karmukilan (25060111) & Irwina Batrisha binti Mohd Shahar(25061717)
+ * DESCRIPTION : Serves as the concrete system controller implementing the LibraryADT
+ * interface contract. Manages user authentication contexts (Librarian
+ * vs. Student), coordinates auxiliary index HashMaps for fast text
+ * searches, routes primary key insertions safely into the BookBST
+ * engine, logs operational transactions onto the HistoryStack, and
  * drives flat-file CSV synchronization mechanisms.
  */
 package Classes;
@@ -23,12 +23,12 @@ import java.util.List;
 import java.util.Scanner;
 
 public class SmartLibrary implements LibraryADT {
-    
+
     // Keep internal implementation details hidden from client code.
     private BookBST catalogue = new BookBST();
     private HistoryStack history = new HistoryStack();
     private Scanner sc = new Scanner(System.in);
-    // Inverted indexes mapping lookup targets to Lists to cleanly manage hash collision buckets.
+    // Auxiliary indexes mapping lookup targets to Lists to cleanly manage duplicate keys.
     private HashMap<String, List<Book>> titleIndex = new HashMap<>();
     private HashMap<String, List<Book>> authorIndex = new HashMap<>();
     // Variables used to track the current user and system state.
@@ -37,22 +37,16 @@ public class SmartLibrary implements LibraryADT {
     // File paths used to store and load application data.
     private final String CATALOGUE_FILE = "Database/catalogue.csv";
     private final String HISTORY_FILE = "Database/history.csv";
-    
-    /**
-     * Constructor triggers automated file initialization routines upon class instantiation.
-     */
+
     public SmartLibrary() {
         loadData();
     }
-    /**
-    * Loads data from CSV files and reconstructs the application's
-    * in-memory collections.
-    */
+
     private void loadData() {
     try {
         File databaseDir = new File("Database");
         if (!databaseDir.exists()) {
-            databaseDir.mkdirs(); // Create the required directories if they do not already exist.
+            databaseDir.mkdirs();
         }
 
         File catFile = new File(CATALOGUE_FILE);
@@ -60,7 +54,7 @@ public class SmartLibrary implements LibraryADT {
             Scanner reader = new Scanner(catFile);
             while (reader.hasNextLine()) {
                 String line = reader.nextLine().trim();
-                if (line.isEmpty()) continue; // Skip redundant blank line segments safely
+                if (line.isEmpty()) continue;
                 String[] data = line.split(",");
                 if (data.length == 5) {
                     int isbn = Integer.parseInt(data[0].trim());
@@ -69,10 +63,8 @@ public class SmartLibrary implements LibraryADT {
                     int totalCopies = Integer.parseInt(data[3].trim());
                     int availableCopies = Integer.parseInt(data[4].trim());
 
-                    // Load the saved values and rebuild the object's state.
                     Book b = new Book(isbn, title, author, totalCopies, availableCopies);
                     catalogue.insert(b);
-                    // Store text keys in a case-insensitive format for consistent lookups.
                     titleIndex.putIfAbsent(b.getTitle().toLowerCase(), new ArrayList<>());
                     titleIndex.get(b.getTitle().toLowerCase()).add(b);
 
@@ -93,8 +85,7 @@ public class SmartLibrary implements LibraryADT {
                 if (data.length == 2) {
                     int isbn = Integer.parseInt(data[0].trim());
                     String status = data[1].trim();
-                    
-                    // Link the stored records back to their corresponding data objects.
+
                     Book b = catalogue.search(isbn);
                     if (b != null) {
                         history.push(b, status);
@@ -110,9 +101,7 @@ public class SmartLibrary implements LibraryADT {
         System.out.println("Warning: Could not perfectly load all save data.");
     }
 }
-    /**
-    * Saves application data to disk and verifies that the operation completes successfully.
-    */
+
     private void saveData() {
         try {
             File databaseDir = new File("Database");
@@ -122,7 +111,7 @@ public class SmartLibrary implements LibraryADT {
 
             PrintWriter catWriter = new PrintWriter(CATALOGUE_FILE);
             for (Book b : catalogue.getAllBooks()) {
-                catWriter.println(b.toCSV()); // Writes using safe internal sanitizer loops
+                catWriter.println(b.toCSV());
             }
             catWriter.close();
 
@@ -137,10 +126,7 @@ public class SmartLibrary implements LibraryADT {
             System.out.println("Error: Could not save data to files.");
         }
     }
-    /**
-     * Registers a unique book entity. Prevents primary duplicate index overlaps.
-     * Complexity: O(log N) Average tree traversal route check.
-     */
+
     @Override
     public void addBook(int isbn, String title, String author, int copies) {
         if (catalogue.search(isbn) != null) {
@@ -150,7 +136,6 @@ public class SmartLibrary implements LibraryADT {
 
         Book newBook = new Book(isbn, title, author, copies);
         catalogue.insert(newBook);
-        // Add the new item to the author and title lookup maps.
         titleIndex.putIfAbsent(title.toLowerCase(), new ArrayList<>());
         titleIndex.get(title.toLowerCase()).add(newBook);
         authorIndex.putIfAbsent(author.toLowerCase(), new ArrayList<>());
@@ -158,9 +143,7 @@ public class SmartLibrary implements LibraryADT {
 
         System.out.println("Success: '" + title + "' added to the catalogue with " + copies + " copies.");
     }
-    /**
-    * Finds the target item using a binary search before updating its data.
-    */
+
     @Override
     public void addCopiesToBook(int isbn, int copies) {
         Book b = catalogue.search(isbn);
@@ -171,9 +154,7 @@ public class SmartLibrary implements LibraryADT {
             System.out.println("Error: Book with ISBN " + isbn + " not found.");
         }
     }
-    /**
-    * Provides a menu for removing specific properties from an item.
-    */
+
     @Override
     public void deleteBook() {
         try {
@@ -203,14 +184,12 @@ public class SmartLibrary implements LibraryADT {
             if (choice.equals("exit") || choice.equals("cancel")) {
                 System.out.println("Deletion cancelled. Returning to menu.");
                 return;
-            } else if (choice.equals("purge")) { 
-                // Ensure the tree remains valid before deleting the node.
+            } else if (choice.equals("purge")) {
                 if (b.getAvailableCopies() < b.getTotalCopies()) {
                     System.out.println("Error: Cannot purge book. " + (b.getTotalCopies() - b.getAvailableCopies()) + " copies are currently borrowed.");
                 } else {
-                    catalogue.delete(isbn); // Drop record nodes out from core search paths.
+                    catalogue.delete(isbn);
 
-                    // Remove all references to the item from the indexing structures.
                     String titleKey = b.getTitle().toLowerCase();
                     if (titleIndex.containsKey(titleKey)) {
                     titleIndex.get(titleKey).remove(b);
@@ -235,7 +214,6 @@ public class SmartLibrary implements LibraryADT {
                     System.out.println("Success: Removed " + removed + " copies. " + b.getTotalCopies() + " total copies remain.");
                 }
             } else {
-                // Checks whether the input contains only digits.
                 if (choice.matches("\\d+")) {
                     int amount = Integer.parseInt(choice);
                     if (amount <= 0) {
@@ -254,10 +232,7 @@ public class SmartLibrary implements LibraryADT {
             System.out.println("Error: Invalid input. Expected a valid integer for ISBN.");
         }
     }
-    /**
-    * Performs efficient primary-key lookups using a binary search tree.
-    * Average time complexity: O(log N) due to logarithmic tree traversal.
-    */
+
     @Override
     public void searchBookByIsbn(int isbn) {
         Book b = catalogue.search(isbn);
@@ -268,7 +243,7 @@ public class SmartLibrary implements LibraryADT {
         }
     }
 
-   // Iterates through text entries and checks for substring matches.
+    // Iterates through text entries and checks for substring matches.
     @Override
     public void searchBookByTitle(String title) {
     String lowerQuery = title.toLowerCase();
@@ -285,14 +260,10 @@ public class SmartLibrary implements LibraryADT {
         System.out.println("Result: No book found containing the title '" + title + "'.");
     }
 }
-    /**
-    * Performs fast lookups using hash-based key mapping.
-    * Average time complexity is near O(1), avoiding linear scans.
-    */   
+
     @Override
     public void searchBookByAuthor(String author) {
         List<Book> books = authorIndex.get(author.toLowerCase());
-        // Prevents errors when the query is null.
         if (books != null && !books.isEmpty()) {
             System.out.println("Found books by " + author + ":");
             for (Book b : books) {
@@ -302,9 +273,7 @@ public class SmartLibrary implements LibraryADT {
             System.out.println("Result: No books found by author '" + author + "'.");
         }
     }
-    /**
-    * Decrements available units and logs a tracking flag instance onto the HistoryStack.
-    */
+
     @Override
     public void borrowBook(int isbn) {
         if (isbn <= 0) {
@@ -315,8 +284,8 @@ public class SmartLibrary implements LibraryADT {
         if (b != null) {
             if (b.getAvailableCopies() > 0) {
                 b.borrowCopy();
-                sessionBorrowedIsbns.add(isbn); // Append tracking token onto active list profile
-                history.push(b, "Borrowed"); // Push onto chronological log stack
+                sessionBorrowedIsbns.add(isbn);
+                history.push(b, "Borrowed");
                 System.out.println("Success: You borrowed '" + b.getTitle() + "'. " + b.getAvailableCopies() + " copies remaining.");
             } else {
                 System.out.println("Error: '" + b.getTitle() + "' is currently out of stock.");
@@ -325,9 +294,7 @@ public class SmartLibrary implements LibraryADT {
             System.out.println("Error: Book with ISBN " + isbn + " does not exist in the catalogue.");
         }
     }
-    /**
-    * Restores shelf capacities and registers operation status maps.
-    */
+
     @Override
     public void returnBook(int isbn) {
     if (isbn <= 0) {
@@ -341,23 +308,19 @@ public class SmartLibrary implements LibraryADT {
     }
     if (b.getAvailableCopies() < b.getTotalCopies()) {
         b.returnCopy();
-        sessionBorrowedIsbns.remove(Integer.valueOf(isbn)); // Clear session loan parameters safely.
+        sessionBorrowedIsbns.remove(Integer.valueOf(isbn));
         history.push(b, "Returned");
         System.out.println("Success: You returned '" + b.getTitle() + "'. " + b.getAvailableCopies() + " copies now available.");
     } else {
         System.out.println("Notice: All copies of '" + b.getTitle() + "' are already in the library.");
     }
 }
-    /**
-    * Direct call mapping out to the HistoryStack controller interface method.
-    */
+
     @Override
     public void viewLatestHistory() {
         history.show();
     }
-    /**
-    * Filters repository data to find items that are currently on loan.
-    */
+
     @Override
     public void viewBorrowedBooks() {
         System.out.println("\n<<--- Currently Borrowed Books --->>");
@@ -378,16 +341,12 @@ public class SmartLibrary implements LibraryADT {
         }
         System.out.println("<<-------------------------------->>");
     }
-    /**
-    * Performs an in-order traversal to output the tree in sorted order.
-    */
+
     @Override
     public void printWholeCatalogue() {
         catalogue.printInOrder();
     }
-    /**
-    * Initializes the interactive control loop for the terminal interface.
-    */
+
     @Override
     public void runMenu() {
         System.out.println("\nWelcome to the Smart Library System");
@@ -404,11 +363,11 @@ public class SmartLibrary implements LibraryADT {
                 String roleChoice = sc.nextLine().trim();
                 if (roleChoice.equals("1")) {
                     userRole = "Student";
-                    sessionBorrowedIsbns.clear(); // Clear session state upon new login context
+                    sessionBorrowedIsbns.clear();
                     break;
                 } else if (roleChoice.equals("2")) {
                     userRole = "Librarian";
-                    sessionBorrowedIsbns.clear(); // Clear session state upon new login context
+                    sessionBorrowedIsbns.clear();
                     break;
                 } else if (roleChoice.equals("3")) {
                     System.out.println("Saving and shutting down. Goodbye!");
@@ -428,7 +387,7 @@ public class SmartLibrary implements LibraryADT {
 
                 if (command.equals("logout") || command.equals("10")) {
                     System.out.println("Logging out...");
-                    sessionBorrowedIsbns.clear(); // Safely clear tracking state on explicit logout
+                    sessionBorrowedIsbns.clear();
                     loggedIn = false;
                     break;
                 }
@@ -439,13 +398,11 @@ public class SmartLibrary implements LibraryADT {
                     return;
                 }
 
-                handleChoice(command); // Pass raw command strings safely out to route handlers.
+                handleChoice(command);
             }
         }
     }
-    /**
-    * Formats and displays available options based on user role.
-    */
+
     private void printMenu() {
         System.out.println("\n<<----- SmartLibrary CLI Navigation (" + userRole + ") ----->>");
         System.out.println("Type one of the following command keywords to execute an action:\n");
@@ -468,9 +425,7 @@ public class SmartLibrary implements LibraryADT {
         System.out.printf("  %-12s -> %s\n", " exit", "Save database metrics and safely kill the application process");
         System.out.println("<<----------------------------------------------------------------->>");
     }
-    /**
-    * Evaluates route flags mapping string inputs safely out to structural method calls.
-    */
+
     private void handleChoice(String command) {
         switch (command) {
             case "add", "1":
@@ -486,7 +441,6 @@ public class SmartLibrary implements LibraryADT {
                         break;
                     }
                     System.out.print("Enter Title: ");
-                    // Removes commas to prevent issues when writing database rows.
                     String title = sc.nextLine().replace(",", " ").trim();
                     if (title.isEmpty()) {
                         System.out.println("Error: Title cannot be empty.");
