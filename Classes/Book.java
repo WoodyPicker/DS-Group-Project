@@ -26,10 +26,15 @@ public class Book {
     private int totalCopies;  // How many copies the library owns in total.
     private int availableCopies;  // How many are currently on the shelf (not borrowed).
 
+    // Creates a Book where all copies are initially available
     public Book(int isbn, String title, String author, int copies) {
         this(isbn, title, author, copies, copies);
     }
 
+    /**
+     * Creates a Book with separate total and available copy counts
+     * Used when loading existing records
+     */
     public Book(int isbn, String title, String author, int totalCopies, int availableCopies) {
         this.isbn = isbn;
         this.title = title;
