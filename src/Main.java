@@ -7,15 +7,17 @@
  * DESCRIPTION : Application entry point. Instantiates the concrete SmartLibrary behind a LibraryADT interface reference - programming to the interface rather
  * than the implementation - and launches the interactive console menu loop.
  */
-package Classes;
+package src;
 // Entry point of the program; the JVM starts execution here.
+
 public class Main {
-     // Declare the variable using the ADT interface type, not the concrete class.
-     // The client (Main) depends only on the LibraryADT contract, which enforces
-     // information hiding and keeps it decoupled from SmartLibrary's internals.
+    // Declare the variable using the ADT interface type, not the concrete class.
+    // The client (Main) depends only on the LibraryADT contract, which enforces
+    // information hiding and keeps it decoupled from SmartLibrary's internals.
+
     public static void main(String[] args) {
-       LibraryADT library = new SmartLibrary();
-     // Hand control to the system: starts the interactive login and menu loop.
-       library.runMenu();
+        LibraryADT library = new SmartLibrary();
+        // Hand control to the system: starts the interactive login and menu loop.
+        library.runMenu();
     }
 }

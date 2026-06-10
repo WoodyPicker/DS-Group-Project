@@ -11,14 +11,15 @@
  * copy-count invariants, along with a toCSV() serializer used for flat-file
  * persistence.
  */
-package Classes;
+package src;
 
 public class Book {
-/**
- * Represents one book title in the catalogue. Every field is private so that the
- * rest of the system can only change a book's state through the methods below,
- * which keeps the copy counts consistent.
- */
+
+    /**
+     * Represents one book title in the catalogue. Every field is private so
+     * that the rest of the system can only change a book's state through the
+     * methods below, which keeps the copy counts consistent.
+     */
 
     private int isbn; // Unique identifier; also the key used by the BST.
     private String title;
@@ -32,8 +33,8 @@ public class Book {
     }
 
     /**
-     * Creates a Book with separate total and available copy counts
-     * Used when loading existing records
+     * Creates a Book with separate total and available copy counts Used when
+     * loading existing records
      */
     public Book(int isbn, String title, String author, int totalCopies, int availableCopies) {
         this.isbn = isbn;
@@ -42,6 +43,7 @@ public class Book {
         this.totalCopies = totalCopies;
         this.availableCopies = availableCopies;
     }
+
     // Read-only accessors. The fields stay private; callers can look but not assign.
     public int getIsbn() {
         return isbn;
@@ -62,35 +64,41 @@ public class Book {
     public int getAvailableCopies() {
         return availableCopies;
     }
+
     /**
-    * Checks out one copy. The guard makes sure we never go below zero, so the
-    * count can't drift into an invalid state even if called carelessly.
-    */
+     * Checks out one copy. The guard makes sure we never go below zero, so the
+     * count can't drift into an invalid state even if called carelessly.
+     */
     public void borrowCopy() {
         if (availableCopies > 0) {
             availableCopies--;
         }
     }
+
     /**
-    * Returns one copy. The guard prevents the available count from rising above
-    * the number of copies the library actually owns.
-    */
+     * Returns one copy. The guard prevents the available count from rising
+     * above the number of copies the library actually owns.
+     */
     public void returnCopy() {
         if (availableCopies < totalCopies) {
             availableCopies++;
         }
     }
+
     /**
-    * Restocks the title by adding new physical copies to both the total and the available count.
-    */
+     * Restocks the title by adding new physical copies to both the total and
+     * the available count.
+     */
     public void addCopies(int newCopies) {
         this.totalCopies += newCopies;
         this.availableCopies += newCopies;
     }
+
     /**
-    * Removes physical copies from the library. Rejects a count that is negative
-    * or larger than what is currently available, since borrowed copies cannot be removed from the shelf.
-    */
+     * Removes physical copies from the library. Rejects a count that is
+     * negative or larger than what is currently available, since borrowed
+     * copies cannot be removed from the shelf.
+     */
     public void removeCopies(int count) {
         if (count < 0 || count > this.availableCopies) {
             throw new IllegalArgumentException("Cannot remove more copies than available.");
@@ -98,15 +106,18 @@ public class Book {
         this.totalCopies -= count;
         this.availableCopies -= count;
     }
+
     /**
-    * Serialises this book into a single CSV row for flat-file storage, matching the column order the loader expects.
-    */
+     * Serialises this book into a single CSV row for flat-file storage,
+     * matching the column order the loader expects.
+     */
     public String toCSV() {
         return isbn + "," + title + "," + author + "," + totalCopies + "," + availableCopies;
     }
+
     /**
-    * Human-readable summary used whenever a book is printed to the console.
-    */
+     * Human-readable summary used whenever a book is printed to the console.
+     */
     @Override
     public String toString() {
         return "[ISBN: " + isbn + "] " + title + " by " + author

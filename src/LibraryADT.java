@@ -9,8 +9,7 @@
                  rules your team must follow for adding, searching, borrowing, returning, and 
                  deleting books, ensuring the final program is organized, secure, and perfectly structured.
  */
-package Classes;
-
+package src;
 
 public interface LibraryADT {
 
@@ -25,7 +24,7 @@ public interface LibraryADT {
     // Use this to update the inventory quantity of a book already in the system.
     // It finds the existing node by ISBN and increments the copy count.
     void addCopiesToBook(int isbn, int copies);
-   
+
     // The search uses the BST key.
     void searchBookByIsbn(int isbn);
 
@@ -42,7 +41,7 @@ public interface LibraryADT {
 
     // Puts the book back into the catalogue (increases the copy count).
     void returnBook(int isbn);
-    
+
     // Handle book deletion by option
     void deleteBook();
 
@@ -51,9 +50,9 @@ public interface LibraryADT {
 
     // Used to show everything a user currently has checked out,
     // rather than their entire past history.
-    void viewBorrowedBooks(); 
+    void viewBorrowedBooks();
 
     // Prints every single book in the BST. 
     void printWholeCatalogue();
-    
+
 }

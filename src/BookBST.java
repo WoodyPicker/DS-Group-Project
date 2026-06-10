@@ -8,7 +8,7 @@
  * organised by ISBN. Supports insertion, search, deletion, and sorted
  * traversal of Book records through recursive algorithms.
  */
-package Classes;
+package src;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,15 +25,14 @@ public class BookBST {
             this.book = book;
         }
     }
-    
-     // Entry point into the tree.
+
+    // Entry point into the tree.
     private Node root;
 
     /**
-     * Inserts a new Book into the tree based on its ISBN.
-     * Time Complexity: O(log n) average case.
+     * Inserts a new Book into the tree based on its ISBN. Time Complexity:
+     * O(log n) average case.
      */
-    
     public void insert(Book book) {
         root = insertRec(root, book);
     }
@@ -60,7 +59,7 @@ public class BookBST {
         Node result = searchRec(root, isbn);
         return result == null ? null : result.book;
     }
-    
+
     // Recursively moves left or right until the target ISBN is found or the subtree is empty.
     private Node searchRec(Node root, int isbn) {
         if (root == null || root.book.getIsbn() == isbn) {
@@ -73,13 +72,13 @@ public class BookBST {
     }
 
     /**
-     * Deletes the Book with the matching ISBN from the tree.
-     * Time Complexity: O(log n) average case.
+     * Deletes the Book with the matching ISBN from the tree. Time Complexity:
+     * O(log n) average case.
      */
     public void delete(int isbn) {
         root = deleteRec(root, isbn);
     }
-    
+
     // Recursively locates and removes the target node, handling all three deletion cases.
     private Node deleteRec(Node root, int isbn) {
         if (root == null) {
@@ -97,14 +96,14 @@ public class BookBST {
             } else if (root.right == null) {
                 return root.left;
             }
-            
+
             // Case 3: Node has two children, replace with the in-order successor.
             root.book = minValue(root.right);
             root.right = deleteRec(root.right, root.book.getIsbn());
         }
         return root;
     }
-    
+
     // Finds the smallest ISBN in a subtree, used as the in-order successor during deletion.
     private Book minValue(Node root) {
         Book minv = root.book;

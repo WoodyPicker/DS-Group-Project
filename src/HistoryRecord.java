@@ -8,7 +8,7 @@
  * pairing a Book with its corresponding action (borrow or return).
  * Acts as the data unit stored within the HistoryStack.
  */
-package Classes;
+package src;
 
 public class HistoryRecord {
 
@@ -23,7 +23,6 @@ public class HistoryRecord {
     }
 
     // Getters
-
     public Book getBook() {
         return book;
     }
@@ -33,7 +32,6 @@ public class HistoryRecord {
     }
 
     // Output Format
-
     // Returns a comma-separated string for saving this record to a CSV file
     public String toCSV() {
         return book.getIsbn() + "," + action;
